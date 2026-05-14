@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import ReactMarkdown from 'react-markdown';
 import api from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 const fieldLabels = {
   word: 'Word', translation: 'Translation', language: 'Language', partOfSpeech: 'Part of Speech',
@@ -44,7 +45,19 @@ const getBadgeClass = (val) => {
   return 'badge-primary';
 };
 
+// Extract bilingual corrections from AI response
+function extractCorrections(text) {
+  if (!text) return null;
+  const correctionPattern = /correction|corrected|should be|instead of|better:/i;
+  if (!correctionPattern.test(text)) return null;
+  const lines = text.split('\n').filter(l => correctionPattern.test(l));
+  return lines.length > 0 ? lines : null;
+}
+
+const PAGINATED_FEATURES = ['flashcards', 'vocabulary', 'progress'];
+
 export default function FeaturePage({ feature }) {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -54,24 +67,42 @@ export default function FeaturePage({ feature }) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState('');
   const [aiFormData, setAiFormData] = useState({});
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ totalPages: 1, total: 0 });
+  const [generatedFlashcards, setGeneratedFlashcards] = useState([]);
 
-  const fetchItems = useCallback(async () => {
+  const isPaginated = PAGINATED_FEATURES.includes(feature.key);
+
+  const fetchItems = useCallback(async (p = 1) => {
     setLoading(true);
     try {
-      const { data } = await api.get(feature.api);
-      setItems(Array.isArray(data) ? data : []);
+      const url = isPaginated ? `${feature.api}?page=${p}&limit=20` : feature.api;
+      const { data } = await api.get(url);
+      if (isPaginated && data.data) {
+        setItems(Array.isArray(data.data) ? data.data : []);
+        setPagination(data.pagination || { totalPages: 1, total: 0 });
+      } else {
+        setItems(Array.isArray(data) ? data : []);
+        setPagination({ totalPages: 1, total: Array.isArray(data) ? data.length : 0 });
+      }
     } catch (err) {
       toast.error('Failed to load data');
     }
     setLoading(false);
-  }, [feature.api]);
+  }, [feature.api, isPaginated]);
 
   useEffect(() => {
-    fetchItems();
+    setPage(1);
     setSelectedItem(null);
     setAiResponse('');
     setAiFormData({});
-  }, [fetchItems, feature.key]);
+    setGeneratedFlashcards([]);
+    fetchItems(1);
+  }, [feature.key]);
+
+  useEffect(() => {
+    if (page > 1) fetchItems(page);
+  }, [page]);
 
   const handleRowClick = async (item) => {
     try {
@@ -104,7 +135,7 @@ export default function FeaturePage({ feature }) {
       await api.delete(`${feature.api}/${selectedItem.id}`);
       toast.success('Deleted successfully');
       setSelectedItem(null);
-      fetchItems();
+      fetchItems(page);
     } catch (err) {
       toast.error('Failed to delete');
     }
@@ -122,7 +153,7 @@ export default function FeaturePage({ feature }) {
       }
       setShowModal(false);
       setSelectedItem(null);
-      fetchItems();
+      fetchItems(page);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to save');
     }
@@ -132,13 +163,22 @@ export default function FeaturePage({ feature }) {
     if (!feature.aiEndpoint) return;
     setAiLoading(true);
     setAiResponse('');
+    setGeneratedFlashcards([]);
     try {
       const payload = {};
       feature.aiFields.forEach(f => {
         payload[f.name] = aiFormData[f.name] || f.default || '';
       });
       const { data } = await api.post(feature.aiEndpoint, payload);
-      setAiResponse(data.aiResponse);
+
+      if (feature.key === 'flashcards' && data.flashcards) {
+        // Structured flashcard response - bulk inserted in DB
+        setGeneratedFlashcards(data.flashcards);
+        toast.success(`${data.count} flashcards created and saved!`);
+        fetchItems(1);
+      } else {
+        setAiResponse(data.aiResponse || data.content || JSON.stringify(data));
+      }
     } catch (err) {
       toast.error(err.response?.data?.error || 'AI request failed');
     }
@@ -146,12 +186,13 @@ export default function FeaturePage({ feature }) {
   };
 
   const displayCols = getDisplayColumns(feature.fields);
+  const corrections = feature.key === 'conversations' ? extractCorrections(aiResponse) : null;
 
   if (selectedItem) {
     return (
       <div>
         <button className="back-btn" onClick={() => setSelectedItem(null)}>
-          ← Back to {feature.label}
+          Back to {feature.label}
         </button>
         <div className="detail-view">
           <div className="detail-header">
@@ -208,7 +249,6 @@ export default function FeaturePage({ feature }) {
                 <><span>✨</span> Ask AI</>
               )}
             </button>
-
             {aiResponse && (
               <div className="ai-response">
                 <div className="ai-content">
@@ -257,16 +297,67 @@ export default function FeaturePage({ feature }) {
               </div>
             ))}
           </div>
-          <button className="btn btn-ai" onClick={handleAiAction} disabled={aiLoading}>
-            {aiLoading ? (
-              <><span className="loading-spinner" style={{ width: '16px', height: '16px', borderWidth: '2px', marginRight: '0' }}></span> Generating...</>
-            ) : (
-              <><span>✨</span> Ask AI</>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button className="btn btn-ai" onClick={handleAiAction} disabled={aiLoading}>
+              {aiLoading ? (
+                <><span className="loading-spinner" style={{ width: '16px', height: '16px', borderWidth: '2px', marginRight: '0' }}></span> Generating...</>
+              ) : (
+                <><span>✨</span> Ask AI</>
+              )}
+            </button>
+            {feature.key === 'flashcards' && (
+              <button className="btn btn-secondary" onClick={() => navigate('/flashcards/study')}>
+                🎯 Study Due Cards
+              </button>
             )}
-          </button>
+          </div>
+
+          {/* Structured flashcard preview after AI generation */}
+          {feature.key === 'flashcards' && generatedFlashcards.length > 0 && (
+            <div style={{ marginTop: 20 }}>
+              <div style={{ fontWeight: 600, marginBottom: 12, color: '#e2e8f0' }}>
+                Generated & Saved {generatedFlashcards.length} Flashcards:
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                {generatedFlashcards.map((fc, idx) => (
+                  <div key={idx} style={{
+                    background: '#0f172a',
+                    borderRadius: 8,
+                    padding: '14px 16px',
+                    border: '1px solid #1e293b'
+                  }}>
+                    <div style={{ fontWeight: 700, color: '#6366f1', marginBottom: 6 }}>{fc.front}</div>
+                    <div style={{ color: '#e2e8f0', fontSize: 14 }}>{fc.back}</div>
+                    {fc.exampleSentence && (
+                      <div style={{ color: '#94a3b8', fontSize: 12, fontStyle: 'italic', marginTop: 6 }}>"{fc.exampleSentence}"</div>
+                    )}
+                    <span className={`badge ${getBadgeClass(fc.difficulty || 'beginner')}`} style={{ marginTop: 8, display: 'inline-block' }}>
+                      {fc.difficulty || 'beginner'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {aiResponse && (
             <div className="ai-response">
+              {corrections && corrections.length > 0 && (
+                <div style={{
+                  background: '#f59e0b15',
+                  border: '1px solid #f59e0b40',
+                  borderRadius: 8,
+                  padding: '12px 16px',
+                  marginBottom: 12
+                }}>
+                  <div style={{ fontWeight: 600, color: '#f59e0b', marginBottom: 8, fontSize: 13 }}>
+                    Language Corrections
+                  </div>
+                  {corrections.map((c, i) => (
+                    <div key={i} style={{ fontSize: 13, color: '#fbbf24', marginBottom: 4 }}>{c}</div>
+                  ))}
+                </div>
+              )}
               <div className="ai-content">
                 <ReactMarkdown>{aiResponse}</ReactMarkdown>
               </div>
@@ -277,7 +368,7 @@ export default function FeaturePage({ feature }) {
 
       <div className="data-table-container">
         <div className="table-header">
-          <h3>{items.length} {feature.label}</h3>
+          <h3>{pagination.total || items.length} {feature.label}</h3>
           <button className="btn btn-primary" onClick={handleCreate}>
             + New Item
           </button>
@@ -295,32 +386,58 @@ export default function FeaturePage({ feature }) {
             <p>Click "New Item" to add your first entry</p>
           </div>
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                {displayCols.map(c => (
-                  <th key={c}>{fieldLabels[c] || c}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, idx) => (
-                <tr key={item.id} onClick={() => handleRowClick(item)}>
-                  <td>{idx + 1}</td>
+          <>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
                   {displayCols.map(c => (
-                    <td key={c}>
-                      {(c === 'difficulty' || c === 'level') ? (
-                        <span className={`badge ${getBadgeClass(String(item[c] || ''))}`}>{item[c] || '-'}</span>
-                      ) : (
-                        String(item[c] || '-').substring(0, 60) + (String(item[c] || '').length > 60 ? '...' : '')
-                      )}
-                    </td>
+                    <th key={c}>{fieldLabels[c] || c}</th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((item, idx) => (
+                  <tr key={item.id} onClick={() => handleRowClick(item)}>
+                    <td>{(page - 1) * 20 + idx + 1}</td>
+                    {displayCols.map(c => (
+                      <td key={c}>
+                        {(c === 'difficulty' || c === 'level') ? (
+                          <span className={`badge ${getBadgeClass(String(item[c] || ''))}`}>{item[c] || '-'}</span>
+                        ) : (
+                          String(item[c] || '-').substring(0, 60) + (String(item[c] || '').length > 60 ? '...' : '')
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {isPaginated && pagination.totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 16 }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  style={{ opacity: page <= 1 ? 0.4 : 1 }}
+                >
+                  Prev
+                </button>
+                <span style={{ color: '#94a3b8', fontSize: 14 }}>
+                  Page {page} of {pagination.totalPages}
+                </span>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+                  disabled={page >= pagination.totalPages}
+                  style={{ opacity: page >= pagination.totalPages ? 0.4 : 1 }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

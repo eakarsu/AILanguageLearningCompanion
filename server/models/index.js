@@ -58,6 +58,10 @@ const Flashcard = sequelize.define('Flashcard', {
   difficulty: { type: DataTypes.STRING, defaultValue: 'beginner' },
   timesReviewed: { type: DataTypes.INTEGER, defaultValue: 0 },
   timesCorrect: { type: DataTypes.INTEGER, defaultValue: 0 },
+  userId: { type: DataTypes.INTEGER },
+  exampleSentence: { type: DataTypes.TEXT },
+  nextReviewDate: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  intervalDays: { type: DataTypes.INTEGER, defaultValue: 1 },
 });
 
 const Quiz = sequelize.define('Quiz', {
@@ -156,6 +160,15 @@ const Progress = sequelize.define('Progress', {
   date: { type: DataTypes.DATEONLY, defaultValue: Sequelize.NOW },
   language: { type: DataTypes.STRING },
   details: { type: DataTypes.TEXT },
+  userId: { type: DataTypes.INTEGER },
+});
+
+const DailyLesson = sequelize.define('DailyLesson', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  userId: { type: DataTypes.INTEGER },
+  language: { type: DataTypes.STRING, allowNull: false },
+  lessonDate: { type: DataTypes.DATEONLY, defaultValue: Sequelize.NOW },
+  planData: { type: DataTypes.JSONB },
 });
 
 const TutorSession = sequelize.define('TutorSession', {
@@ -197,4 +210,5 @@ module.exports = {
   Progress,
   TutorSession,
   Pronunciation,
+  DailyLesson,
 };

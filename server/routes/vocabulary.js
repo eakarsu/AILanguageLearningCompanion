@@ -1,9 +1,18 @@
 const router = require('express').Router();
 const { Vocabulary } = require('../models');
 const { callOpenRouter } = require('../services/openrouter');
+const { aiRateLimiter } = require('../middleware/rateLimiter');
+const auth = require('../middleware/auth');
 
 router.get('/', async (req, res) => {
   try {
+    if (req.query.page || req.query.limit) {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const offset = (page - 1) * limit;
+      const { count, rows } = await Vocabulary.findAndCountAll({ limit, offset, order: [['createdAt', 'DESC']] });
+      return res.json({ data: rows, pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) } });
+    }
     const items = await Vocabulary.findAll({ order: [['createdAt', 'DESC']] });
     res.json(items);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -42,7 +51,7 @@ router.delete('/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/ai-generate', async (req, res) => {
+router.post('/ai-generate', aiRateLimiter, async (req, res) => {
   try {
     const { word, language } = req.body;
     const content = await callOpenRouter([

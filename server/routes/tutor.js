@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { TutorSession } = require('../models');
 const { callOpenRouter } = require('../services/openrouter');
+const { aiRateLimiter } = require('../middleware/rateLimiter');
 
 router.get('/', async (req, res) => {
   try { res.json(await TutorSession.findAll({ order: [['createdAt', 'DESC']] })); }
@@ -38,7 +39,7 @@ router.delete('/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/ai-chat', async (req, res) => {
+router.post('/ai-chat', aiRateLimiter, async (req, res) => {
   try {
     const { message, language, topic, level, history } = req.body;
     const messages = [

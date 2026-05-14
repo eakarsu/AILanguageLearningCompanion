@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { Quiz } = require('../models');
 const { callOpenRouter } = require('../services/openrouter');
+const { aiRateLimiter } = require('../middleware/rateLimiter');
 
 router.get('/', async (req, res) => {
   try { res.json(await Quiz.findAll({ order: [['createdAt', 'DESC']] })); }
@@ -38,7 +39,7 @@ router.delete('/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/ai-generate', async (req, res) => {
+router.post('/ai-generate', aiRateLimiter, async (req, res) => {
   try {
     const { topic, language, level } = req.body;
     const content = await callOpenRouter([

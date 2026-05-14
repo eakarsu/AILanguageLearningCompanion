@@ -1,0 +1,15 @@
+const rateLimit = require('express-rate-limit');
+
+const aiRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  keyGenerator: (req) => {
+    if (req.user) return `user:${req.user.id}`;
+    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    return ip;
+  },
+  validate: { xForwardedForHeader: false },
+  message: { error: 'AI rate limit exceeded. Max 20 requests/hour.' }
+});
+
+module.exports = { aiRateLimiter };

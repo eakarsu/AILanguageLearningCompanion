@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
-export default function Sidebar({ features, user, onLogout }) {
+export default function Sidebar({ features, user, onLogout, extraLinks = [] }) {
   const navigate = useNavigate();
 
   return (
@@ -16,6 +16,12 @@ export default function Sidebar({ features, user, onLogout }) {
           <span className="nav-icon">🏠</span>
           Dashboard
         </NavLink>
+        {extraLinks.map(el => (
+          <NavLink key={el.key} to={el.path} className={({ isActive }) => isActive ? 'active' : ''}>
+            <span className="nav-icon">{el.icon}</span>
+            {el.label}
+          </NavLink>
+        ))}
         {features.map(f => (
           <NavLink key={f.key} to={`/${f.key}`} className={({ isActive }) => isActive ? 'active' : ''}>
             <span className="nav-icon">{f.icon}</span>
