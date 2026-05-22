@@ -29,6 +29,7 @@ app.use('/api/tutor', require('./routes/tutor'));
 app.use('/api/pronunciation', require('./routes/pronunciation'));
 app.use('/api/ai/daily-lesson', require('./routes/dailyLesson'));
 app.use('/api/ai', require('./routes/ai'));
+app.use('/api/forgetting-curve-review', require('./routes/forgettingCurveReview'));
 
 // Apply rate limiter to all generic AI sub-routes
 const aiRoutes = [

@@ -9,6 +9,12 @@ import FeaturePage from './pages/FeaturePage';
 import FlashcardStudy from './pages/FlashcardStudy';
 import DailyLesson from './pages/DailyLesson';
 import AIToolsPage from './pages/AIToolsPage';
+import ForgettingCurveReview from './pages/ForgettingCurveReview';
+
+import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
+import CodexOperationsFeature from './pages/CodexOperationsFeature';
+
+import TimelineView from './pages/TimelineView';
 
 const features = [
   { key: 'vocabulary', label: 'Vocabulary Builder', icon: '📚', api: '/vocabulary', aiEndpoint: '/vocabulary/ai-generate', aiFields: [{name:'word',label:'Word',required:true},{name:'language',label:'Language',default:'Spanish'}], fields: ['word','translation','language','partOfSpeech','exampleSentence','pronunciation','difficulty','category'] },
@@ -62,9 +68,14 @@ function App() {
           { key: 'flashcard-study', label: 'Study Now', icon: '🎯', path: '/flashcards/study' },
           { key: 'daily-lesson', label: "Today's Lesson", icon: '📅', path: '/daily-lesson' },
           { key: 'ai-tools', label: 'AI Tools', icon: '✨', path: '/ai-tools' },
+          { key: 'forgetting-curve-review', label: 'Review Queue', icon: '🧠', path: '/forgetting-curve-review' },
         ]} />
         <div className="main-content">
           <Routes>
+        <Route path="/insights/timeline" element={<TimelineView />} />
+        <Route path="/codex/custom-viz" element={<CodexCustomVizFeature />} />
+        <Route path="/codex/operations" element={<CodexOperationsFeature />} />
+
             <Route path="/" element={<Dashboard features={features} />} />
             {features.map(f => (
               <Route key={f.key} path={`/${f.key}`} element={<FeaturePage feature={f} />} />
@@ -72,6 +83,7 @@ function App() {
             <Route path="/flashcards/study" element={<FlashcardStudy />} />
             <Route path="/daily-lesson" element={<DailyLesson />} />
             <Route path="/ai-tools" element={<AIToolsPage />} />
+            <Route path="/forgetting-curve-review" element={<ForgettingCurveReview />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>
