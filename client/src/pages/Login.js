@@ -9,12 +9,6 @@ export default function Login({ onLogin }) {
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleAutoFill = () => {
-    setEmail('demo@linguaai.com');
-    setPassword('password123');
-    setName('Demo User');
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -38,10 +32,6 @@ export default function Login({ onLogin }) {
           <h1>LinguaAI</h1>
           <p>AI-Powered Language Learning Companion</p>
         </div>
-
-        <button className="auto-fill-btn" onClick={handleAutoFill}>
-          Click to Auto-Fill Demo Credentials
-        </button>
 
         <form onSubmit={handleSubmit}>
           {isRegister && (

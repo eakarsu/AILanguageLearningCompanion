@@ -1,4 +1,10 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+if (process.env.ALLOW_DEMO_SEED !== 'true' || process.env.NODE_ENV === 'production') {
+  throw new Error('Demo seed is quarantined; set ALLOW_DEMO_SEED=true outside production to run explicitly');
+}
+if (!process.env.DEMO_SEED_PASSWORD || process.env.DEMO_SEED_PASSWORD.length < 12) {
+  throw new Error('DEMO_SEED_PASSWORD must be explicitly supplied with at least 12 characters');
+}
 const { sequelize, User, Vocabulary, GrammarLesson, Conversation, Flashcard, Quiz, Translation, WritingExercise, ReadingPassage, ListeningExercise, CulturalNote, Idiom, Course, Progress, TutorSession, Pronunciation } = require('./models');
 const bcrypt = require('bcryptjs');
 
@@ -7,7 +13,7 @@ async function seed() {
   console.log('Database synced. Seeding data...');
 
   // Users
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  const hashedPassword = await bcrypt.hash(process.env.DEMO_SEED_PASSWORD, 10);
   await User.create({ email: 'demo@linguaai.com', password: hashedPassword, name: 'Demo User', nativeLanguage: 'English', learningLanguage: 'Spanish', level: 'Intermediate' });
 
   // Vocabulary - 16 items
