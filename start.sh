@@ -34,6 +34,11 @@ migrate() {
 
 start_services() {
   check
+  set -a
+  # shellcheck disable=SC1091
+  . "$PROJECT_DIR/.env"
+  set +a
+  export PORT="${BACKEND_PORT:-${PORT:-3001}}"
   [[ -d "$API_DIR/node_modules" && -d "$UI_DIR/node_modules" ]] ||
     { echo "Dependencies are absent; run reviewed locked installs separately." >&2; return 1; }
 
@@ -42,7 +47,7 @@ start_services() {
   if node -e "const p=require('./$UI_DIR/package.json');process.exit(p.scripts&&p.scripts.dev?0:1)"; then
     npm --prefix "$UI_DIR" run dev &
   else
-    BROWSER=none npm --prefix "$UI_DIR" start &
+    BROWSER=none PORT="${FRONTEND_PORT:-3000}" npm --prefix "$UI_DIR" start &
   fi
   ui_pid=$!
 
@@ -54,7 +59,7 @@ start_services() {
   wait "$api_pid" "$ui_pid"
 }
 
-case "${1:-check}" in
+case "${1:-start}" in
   check) check ;;
   migrate) migrate ;;
   start) start_services ;;
