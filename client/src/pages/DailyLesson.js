@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../services/api';
+import AIReport from '../components/AIReport';
+import NativeAIPresets from '../components/NativeAIPresets';
 
 export default function DailyLesson() {
   const [lesson, setLesson] = useState(null);
@@ -41,6 +43,7 @@ export default function DailyLesson() {
       </div>
 
       <div className="detail-view" style={{ marginBottom: 24 }}>
+        <NativeAIPresets fields={[{ name: 'language' }]} disabled={generating} onChoose={(values) => setLanguage(values.language)} />
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label>Language</label>
@@ -90,67 +93,8 @@ export default function DailyLesson() {
             )}
           </div>
 
-          {/* Vocabulary Words */}
-          {Array.isArray(plan.vocabulary_words) && plan.vocabulary_words.length > 0 && (
-            <div className="detail-view" style={{ marginBottom: 20 }}>
-              <h3 style={{ marginBottom: 16 }}>📚 Vocabulary Words</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
-                {plan.vocabulary_words.map((w, idx) => (
-                  <div key={idx} style={{
-                    background: '#0f172a',
-                    borderRadius: 8,
-                    padding: '14px 16px',
-                    border: '1px solid #1e293b'
-                  }}>
-                    <div style={{ fontWeight: 700, color: '#6366f1', fontSize: 16 }}>{w.word}</div>
-                    <div style={{ color: '#e2e8f0', marginTop: 4 }}>{w.translation}</div>
-                    {w.example && (
-                      <div style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', marginTop: 6 }}>
-                        "{w.example}"
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Grammar Focus */}
-          {plan.grammar_focus && (
-            <div className="detail-view" style={{ marginBottom: 20 }}>
-              <h3 style={{ marginBottom: 12 }}>📝 Grammar Focus</h3>
-              <div style={{ color: '#e2e8f0', lineHeight: 1.7 }}>
-                {plan.grammar_focus}
-              </div>
-            </div>
-          )}
-
-          {/* Conversation Scenario */}
-          {plan.conversation_scenario && (
-            <div className="detail-view" style={{ marginBottom: 20 }}>
-              <h3 style={{ marginBottom: 12 }}>💬 Conversation Scenario</h3>
-              <div style={{ color: '#e2e8f0', lineHeight: 1.7, marginBottom: 16 }}>
-                {plan.conversation_scenario}
-              </div>
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  const path = `/conversations`;
-                  window.location.href = path;
-                }}
-              >
-                Start Conversation Practice
-              </button>
-            </div>
-          )}
-
-          {/* Fallback: raw plan */}
-          {plan.raw && (
-            <div className="detail-view">
-              <h3 style={{ marginBottom: 12 }}>Today's Plan</h3>
-              <div style={{ color: '#94a3b8', whiteSpace: 'pre-wrap', fontSize: 14 }}>{plan.raw}</div>
-            </div>
-          )}
+          <AIReport response={plan} title="Today's lesson plan" />
+          {plan.conversation_scenario && <button className="btn btn-primary" onClick={() => { window.location.href = '/conversations'; }}>Start Conversation Practice</button>}
         </div>
       )}
     </div>

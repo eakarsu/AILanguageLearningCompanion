@@ -1,3 +1,4 @@
+import AIReportLibrary from "./AIReportLibrary";
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
@@ -44,6 +45,6 @@ export default function Sidebar({ features, user, onLogout, extraLinks = [] }) {
           ↩
         </button>
       </div>
-    </div>
+    <AIReportLibrary /></div>
   );
 }

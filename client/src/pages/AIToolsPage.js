@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import api from '../services/api';
+import AIReport from '../components/AIReport';
+import NativeAIPresets from '../components/NativeAIPresets';
 
 const TOOLS = [
   {
@@ -115,6 +117,7 @@ export default function AIToolsPage() {
       <div style={{ maxWidth: '720px', background: 'var(--card-bg, #1e293b)', padding: '24px', borderRadius: '8px', border: '1px solid var(--border, #334155)' }}>
         <h2>{tool.icon} {tool.label}</h2>
         <p style={{ opacity: 0.85, marginBottom: '16px' }}>{tool.description}</p>
+        <NativeAIPresets fields={tool.fields} disabled={loading} onChoose={(values) => { setInputs(values); setResult(null); setError(null); }} />
 
         {tool.fields.map(field => (
           <div key={field.key} style={{ marginBottom: '12px' }}>
@@ -166,14 +169,7 @@ export default function AIToolsPage() {
           </div>
         )}
 
-        {result && (
-          <div style={{ marginTop: '20px', padding: '16px', background: 'var(--input-bg, #0f172a)', borderRadius: '8px', border: '1px solid var(--border, #334155)' }}>
-            <h3 style={{ marginBottom: '12px' }}>Result</h3>
-            <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, fontSize: '13px' }}>
-              {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
-            </pre>
-          </div>
-        )}
+        {result !== null && <AIReport response={result} title={`${tool.label} result`} />}
       </div>
     </div>
   );

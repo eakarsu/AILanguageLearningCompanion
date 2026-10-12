@@ -54,6 +54,14 @@ const PORT = process.env.PORT || 3001;
 const schemaReady = process.env.AUTO_INIT_SCHEMA === 'true' ? sequelize.sync({ alter: true }) : sequelize.authenticate();
 app.use('/api/governed-language-learning', require('./governance'));
 
+
+// Advisory AI reports only; native execution and approval routes stay unchanged.
+const aiWorkspaceSupport = require("./aiWorkspaceAdapters.cjs");
+const aiWorkspaceDatabase = aiWorkspaceSupport.sequelizeQueryClient(require("./models/index.js").sequelize);
+app.use('/api/report-workspace', require("./aiWorkspace.cjs").createAIWorkspaceRouter({
+  pool: aiWorkspaceDatabase, authenticateToken: require("./middleware/auth.js"),
+  aiRateLimiter: aiWorkspaceSupport.createWorkspaceLimiter(), features: require("./aiWorkspaceFeatures.json"),
+}));
 schemaReady.then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

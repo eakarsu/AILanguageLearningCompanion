@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import ReactMarkdown from 'react-markdown';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import AIReport from '../components/AIReport';
+import NativeAIPresets from '../components/NativeAIPresets';
 
 const fieldLabels = {
   word: 'Word', translation: 'Translation', language: 'Language', partOfSpeech: 'Part of Speech',
@@ -177,7 +178,7 @@ export default function FeaturePage({ feature }) {
         toast.success(`${data.count} flashcards created and saved!`);
         fetchItems(1);
       } else {
-        setAiResponse(data.aiResponse || data.content || JSON.stringify(data));
+        setAiResponse(data.aiResponse ?? data.content ?? data);
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'AI request failed');
@@ -186,7 +187,7 @@ export default function FeaturePage({ feature }) {
   };
 
   const displayCols = getDisplayColumns(feature.fields);
-  const corrections = feature.key === 'conversations' ? extractCorrections(aiResponse) : null;
+  const corrections = feature.key === 'conversations' && typeof aiResponse === 'string' ? extractCorrections(aiResponse) : null;
 
   if (selectedItem) {
     return (
@@ -205,14 +206,14 @@ export default function FeaturePage({ feature }) {
           <div className="detail-grid">
             {feature.fields.map(f => {
               const val = selectedItem[f];
-              if (val === null || val === undefined || val === '') return null;
+              if (val === null || val === undefined) return null;
               return (
                 <div key={f} className="detail-field" style={['explanation','examples','rules','content','transcript','details','summary','tips','commonMistakes','exampleSentence','funFact','origin','prompt','userResponse','aiFeedback','aiExplanation','description'].includes(f) ? { gridColumn: '1 / -1' } : {}}>
                   <div className="label">{fieldLabels[f] || f}</div>
                   <div className="value">
                     {(f === 'difficulty' || f === 'level') ? (
                       <span className={`badge ${getBadgeClass(String(val))}`}>{String(val)}</span>
-                    ) : typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                    ) : typeof val === 'object' || (typeof val === 'string' && /^[\s]*[\[{]/.test(val)) ? <AIReport response={val} title={fieldLabels[f] || f} /> : val === '' ? '(empty string)' : String(val)}
                   </div>
                 </div>
               );
@@ -229,6 +230,7 @@ export default function FeaturePage({ feature }) {
             <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span>🤖</span> AI Assistant
             </h3>
+            <NativeAIPresets fields={feature.aiFields} disabled={aiLoading} onChoose={(values) => { setAiFormData(values); setAiResponse(''); }} />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
               {feature.aiFields.map(af => (
                 <div key={af.name} className="form-group" style={{ marginBottom: 0 }}>
@@ -249,13 +251,7 @@ export default function FeaturePage({ feature }) {
                 <><span>✨</span> Ask AI</>
               )}
             </button>
-            {aiResponse && (
-              <div className="ai-response">
-                <div className="ai-content">
-                  <ReactMarkdown>{aiResponse}</ReactMarkdown>
-                </div>
-              </div>
-            )}
+            {aiResponse !== '' && <AIReport response={aiResponse} title={`${feature.label} response`} />}
           </div>
         )}
       </div>
@@ -274,6 +270,7 @@ export default function FeaturePage({ feature }) {
           <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span>🤖</span> AI Assistant - {feature.label}
           </h3>
+          <NativeAIPresets fields={feature.aiFields} disabled={aiLoading} onChoose={(values) => { setAiFormData(values); setAiResponse(''); }} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
             {feature.aiFields.map(af => (
               <div key={af.name} className="form-group" style={{ marginBottom: 0 }}>
@@ -340,7 +337,7 @@ export default function FeaturePage({ feature }) {
             </div>
           )}
 
-          {aiResponse && (
+          {aiResponse !== '' && (
             <div className="ai-response">
               {corrections && corrections.length > 0 && (
                 <div style={{
@@ -358,9 +355,7 @@ export default function FeaturePage({ feature }) {
                   ))}
                 </div>
               )}
-              <div className="ai-content">
-                <ReactMarkdown>{aiResponse}</ReactMarkdown>
-              </div>
+              <AIReport response={aiResponse} title={`${feature.label} response`} />
             </div>
           )}
         </div>
@@ -405,7 +400,7 @@ export default function FeaturePage({ feature }) {
                         {(c === 'difficulty' || c === 'level') ? (
                           <span className={`badge ${getBadgeClass(String(item[c] || ''))}`}>{item[c] || '-'}</span>
                         ) : (
-                          String(item[c] || '-').substring(0, 60) + (String(item[c] || '').length > 60 ? '...' : '')
+                          String(item[c] ?? '-').substring(0, 60) + (String(item[c] ?? '').length > 60 ? '...' : '')
                         )}
                       </td>
                     ))}
