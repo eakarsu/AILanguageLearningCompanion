@@ -6,6 +6,7 @@ const { sequelize } = require('./models');
 const { aiRateLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
+app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN || process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }));
 app.use(express.json());
@@ -53,6 +54,11 @@ const PORT = process.env.PORT || 3001;
 
 const schemaReady = process.env.AUTO_INIT_SCHEMA === 'true' ? sequelize.sync({ alter: true }) : sequelize.authenticate();
 app.use('/api/governed-language-learning', require('./governance'));
+{ const fp = require('./featurePack');
+  app.use('/api/feature-pack', require('./routes/featurePack').createFeaturePackRouter({
+    authenticate: require('./middleware/auth'),
+    getRecords: async () => { const { Vocabulary } = require('./models'); const rows = await Vocabulary.findAll({ order: [['createdAt','DESC']], limit: 1000 }); return rows.map((r) => (r.toJSON ? r.toJSON() : r)); },
+    aiHandlers: { 'review-plan': fp.reviewPlan, 'grammar-insight': fp.grammarInsight, 'study-plan': fp.studyPlan } })); }
 
 
 // Advisory AI reports only; native execution and approval routes stay unchanged.
